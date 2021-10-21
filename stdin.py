@@ -1,7 +1,7 @@
 #!usr/bin/env python3
 
-address = "192.168.0.1"
-subnet = "255.255.255.192"
+address = "133.1.45.0"
+subnet = "255.255.0.0"
 asplit = address.split(".")
 sub_split = subnet.split(".")
 binary_sub = list(map(int, sub_split))
@@ -45,12 +45,12 @@ b = [0] * 4
 for i in range(len(z)):
     b[i] = z[i]
 
-print(b)
 x = binary_sub[ind]
 valid_subnets = []
 if ind == 0:
     str_b = list(map(str, b))
     valid_subnets.append(".".join(str_b))
+
 
 if ind == 1:
     for i in range(0, x + 1, blocksize):
@@ -63,6 +63,10 @@ if ind == 1:
         b[ind] = i
         str_b = list(map(str, b))
         valid_subnets.append(".".join(str_b))
+        if i >= 1:
+            b[ind] = i - 1
+            str_b = list(map(str, b))
+            broadcast_addresses.append(".".join(str_b))
 
 
 if ind == 2:
@@ -77,6 +81,10 @@ if ind == 2:
             b[ind] = i
             str_b = list(map(str, b))
             valid_subnets.append(".".join(str_b))
+            if i >= 1:
+                b[ind] = i - 1
+                str_b = list(map(str, b))
+                broadcast_addresses.append(".".join(str_b))
 
         if len(z) == 2:
             break
@@ -94,6 +102,10 @@ if ind == 3:
                 b[ind] = i
                 str_b = list(map(str, b))
                 valid_subnets.append(".".join(str_b))
+                if i >= 1:
+                    b[ind] = i - 1
+                    str_b = list(map(str, b))
+                    broadcast_addresses.append(".".join(str_b))
 
             if len(z) == 3:
                 break
@@ -108,8 +120,13 @@ if ind == 3:
 
         n = 0
         b[1] = m
+if len(broadcast_addresses) > 0:
+    broadcast_addresses.append(".".join(broadcast_addresses[-1].split(".")[:3]) + ".255")
+else:
+    temp = b[:3]
+    temp.append(255)
+    temp = list(map(str, temp))
+    broadcast_addresses.append(".".join(temp))
 
-
-
-print(bi, sum(a), cidr, blocksize, ind, copybinary_sub, z, len(valid_subnets), "\n", valid_subnets[-50:], "\n", first_addresses, "\n", broadcast_addresses, "\n",
+print(bi, sum(a), cidr, blocksize, ind, copybinary_sub, len(z), len(valid_subnets), "\n", valid_subnets, "\n", first_addresses, "\n", broadcast_addresses, "\n",
       last_addresses)
