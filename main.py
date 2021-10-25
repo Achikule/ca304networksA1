@@ -40,12 +40,23 @@ subnet_props = {"address_cidr": "",
                 "addressable_hosts_per_subnet": "",
                 "valid_subnets": [],
                 "broadcast_addresses": [],
-                "last_addresses": []}
+                "first_addresses": [],
+                "last_addresses": []
+                }
+
+supernet_props = {"address": "",
+                  "mask": ""
+
+}
 
 
 class Input(BaseModel):
     address: str
     mask: Optional[str]
+
+
+class SuperNet(BaseModel):
+    address: list
 
 
 def classcalc(ip):
@@ -64,23 +75,180 @@ def classcalc(ip):
         return classE
 
 
-def find_subnetworks(a_split, s_split_int):
+def find_subnetworks(a_split, s_split_int, address_class):
     copy_sub_split_int = s_split_int.copy()
-    index_num = 0
-    for n in copy_sub_split_int:
-        if int(n) < 255:
-            index_num = copy_sub_split_int.index(n)
-            break
-    a_split = a_split[: index_num]
+    broadcast_addresses = []
+    first_addresses = []
+    last_addresses = []
+    valid_subnets = []
+
+    copybinary_sub = [i for i in copy_sub_split_int if i > 0]
+    index_num = len(copybinary_sub) - 1
+
+    if address_class == "A":
+        z = [a_split[0]]
+        z = list(map(int, z))
+
+    elif address_class == "B":
+        z = a_split[:2]
+        z = list(map(int, z))
+
+    else:
+        z = a_split[:3]
+        z = list(map(int, z))
 
     block_size = 256 - int(copy_sub_split_int[index_num])
-    valid_subnets = []
-    q = 0
-    x = ".0"
-    while q <= copy_sub_split_int[index_num]:
-        valid_subnets.append(".".join(a_split) + "." + str(q) + (3 - index_num) * x)
-        q = q + block_size
+
+    b = [0] * 4
+
+    for i in range(len(z)):
+        b[i] = z[i]
+
+    x = copy_sub_split_int[index_num]
+
+    if index_num == 0:
+        str_b = list(map(str, b))
+        valid_subnets.append(".".join(str_b))
+        if len(z) == 1:
+            b[-1] = b[-1] + 1
+            str_b = list(map(str, b))
+            first_addresses.append(".".join(str_b))
+
+            b[1], b[2], b[3] = 255, 255, 255
+            str_b = list(map(str, b))
+            broadcast_addresses.append(".".join(str_b))
+
+            b[-1] = b[-1] - 1
+            str_b = list(map(str, b))
+            last_addresses.append(".".join(str_b))
+
+    if index_num == 1:
+        for i in range(0, x + 1, block_size):
+
+            if len(z) == 2:
+                str_b = list(map(str, b))
+                valid_subnets.append(".".join(str_b))
+
+                b[-1] = b[-1] + 1
+                str_b = list(map(str, b))
+                first_addresses.append(".".join(str_b))
+
+                b[2], b[3] = 255, 255
+                str_b = list(map(str, b))
+                broadcast_addresses.append(".".join(str_b))
+
+                b[-1] = b[-1] - 1
+                str_b = list(map(str, b))
+                last_addresses.append(".".join(str_b))
+                break
+
+            b[2], b[3] = 0, 0
+            b[index_num] = i
+            str_b = list(map(str, b))
+            valid_subnets.append(".".join(str_b))
+
+            b[-1] = b[-1] + 1
+            str_b = list(map(str, b))
+            first_addresses.append(".".join(str_b))
+
+            tmp = i + block_size - 1
+            b[index_num] = tmp
+            b[2], b[3] = 255, 255
+            str_b = list(map(str, b))
+            broadcast_addresses.append(".".join(str_b))
+
+            b[-1] = b[-1] - 1
+            str_b = list(map(str, b))
+            last_addresses.append(".".join(str_b))
+
+    if index_num == 2:
+        for n in range(1, 257, 1):
+            for i in range(0, x + 1, block_size):
+
+                if len(z) == 3:
+                    str_b = list(map(str, b))
+                    valid_subnets.append(".".join(str_b))
+
+                    b[-1] = b[-1] + 1
+                    str_b = list(map(str, b))
+                    first_addresses.append(".".join(str_b))
+
+                    b[3] = 255
+                    str_b = list(map(str, b))
+                    broadcast_addresses.append(".".join(str_b))
+
+                    b[-1] = b[-1] - 1
+                    str_b = list(map(str, b))
+                    last_addresses.append(".".join(str_b))
+                    break
+
+                b[3] = 0
+                b[index_num] = i
+                str_b = list(map(str, b))
+                valid_subnets.append(".".join(str_b))
+
+                b[-1] = b[-1] + 1
+                str_b = list(map(str, b))
+                first_addresses.append(".".join(str_b))
+
+                tmp = i + block_size - 1
+                b[index_num] = tmp
+                b[3] = 255
+                str_b = list(map(str, b))
+                broadcast_addresses.append(".".join(str_b))
+
+                b[-1] = b[-1] - 1
+                str_b = list(map(str, b))
+                last_addresses.append(".".join(str_b))
+
+            if len(z) == 2:
+                break
+
+            if len(z) == 3:
+                break
+
+            i = 0
+            b[1] = n
+
+    if index_num == 3:
+        for m in range(1, 257, 1):
+            for n in range(1, 257, 1):
+                for i in range(0, x + 1, block_size):
+                    b[index_num] = i
+                    str_b = list(map(str, b))
+                    valid_subnets.append(".".join(str_b))
+
+                    b[-1] = b[-1] + 1
+                    str_b = list(map(str, b))
+                    first_addresses.append(".".join(str_b))
+
+                    tmp = i + block_size - 1
+                    b[index_num] = tmp
+                    str_b = list(map(str, b))
+                    broadcast_addresses.append(".".join(str_b))
+
+                    b[-1] = b[-1] - 1
+                    str_b = list(map(str, b))
+                    last_addresses.append(".".join(str_b))
+
+                if len(z) == 3:
+                    break
+
+                i = 0
+                b[2] = n
+
+            if len(z) == 3:
+                break
+            if len(z) == 2:
+                break
+
+            n = 0
+            b[1] = m
+
     subnet_props["valid_subnets"] = valid_subnets
+    subnet_props["broadcast_addresses"] = broadcast_addresses
+    subnet_props["first_addresses"] = first_addresses
+    subnet_props["last_addresses"] = last_addresses
 
 
 @app.get("/")
@@ -95,42 +263,92 @@ def ipcalc(ip: Input):
 
 @app.post("/subnet")
 def subcalc(sub: Input):
+
     sub_split = sub.mask.split(".")
     address_split = sub.address.split(".")
     sub_split_int = list(map(int, sub_split))
     binmask = [f"{i:08b}" for i in sub_split_int]
 
     a = []
-    j = 0
-    while j < 4:
+    for j in range(4):
         for i in binmask[j]:
             a.append(int(i))
-        j = j + 1
-
 
     cidr = sum(a)
     subnet_props["address_cidr"] = sub.address + "/" + str(cidr)
 
     address_class = ipcalc(sub)["class"]
-    find_subnetworks(address_split, sub_split_int)
+    find_subnetworks(address_split, sub_split_int, address_class)
 
     if address_class == "A":
         subnet_props["num_subnets"] = 2 ** (cidr - 8)
         subnet_iter = 2 ** (24 - (cidr - 8))
         subnet_props["addressable_hosts_per_subnet"] = subnet_iter - 2
 
-        return subnet_props,
-
     elif address_class == "B":
         subnet_props["num_subnets"] = 2 ** (cidr - 16)
         subnet_iter = 2 ** (16 - (cidr - 16))
         subnet_props["addressable_hosts_per_subnet"] = subnet_iter - 2
 
-        return subnet_props
-
     elif address_class == "C":
         subnet_props["num_subnets"] = 2 ** (cidr - 24)
         subnet_iter = 2 ** (8 - (cidr - 24))
         subnet_props["addressable_hosts_per_subnet"] = subnet_iter - 2
-        valid_subnets = []
-        return subnet_props
+
+    return subnet_props
+
+@app.post("/supernet")
+def supercalc(super_a: SuperNet):
+
+    addresses = []
+    for n in range(len(super_a.address)):
+        a = super_a.address[n].split(".")
+        a = list(map(int, a))
+        addresses.append(a)
+
+    address_first = addresses[0]
+    address_last = addresses[-1]
+
+    binmask_first = [list(f"{i:08b}") for i in address_first]
+    binmask_last = [list(f"{i:08b}") for i in address_last]
+
+    a = []
+    s = True
+    for i in range(len(binmask_first)):
+        for j in range(len(binmask_first[0])):
+
+            if binmask_first[i][j] != binmask_last[i][j]:
+
+                s = False
+                break
+
+            a.append(int(binmask_first[i][j]))
+
+        if not s:
+            break
+
+    supernet_props["address"] = super_a.address[0] + "/" + str(len(a))
+
+    for n in range(len(a)):
+        a[n] = 1
+
+    padding = 8 - len(a) % 8
+
+    for n in range(padding):
+        a.append(0)
+
+    j = 8
+    a = list(map(str, a))
+    split = [a[i:i+j] for i in range(0, len(a), j)]
+
+    c = ["0"] * 4
+    b = ["".join(i) for i in split]
+    b = [str(int(i, 2)) for i in b]
+
+    for i in range(len(b)):
+        c[i] = b[i]
+
+    supernet_props["mask"] = ".".join(c)
+
+    print(binmask_first, "\n", binmask_last, "\n", b, c)
+    return supernet_props

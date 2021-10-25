@@ -1,7 +1,7 @@
 #!usr/bin/env python3
 
-address = "133.1.45.0"
-subnet = "255.255.0.0"
+address = "101.221.3.2"
+subnet = "255.0.0.0"
 asplit = address.split(".")
 sub_split = subnet.split(".")
 binary_sub = list(map(int, sub_split))
@@ -24,7 +24,7 @@ subnet_iter = 2 ** (8 - (sum(a) - 24))
 cidr = subnet_iter - 2
 
 copybinary_sub = [i for i in binary_sub if i > 0]
-ind = len(copybinary_sub) - 1
+index_num = len(copybinary_sub) - 1
 
 if address in classA:
     z = [asplit[0]]
@@ -39,52 +39,112 @@ else:
     z = list(map(int, z))
 
 
-blocksize = 256 - int(binary_sub[ind])
+blocksize = 256 - int(binary_sub[index_num])
 b = [0] * 4
 
 for i in range(len(z)):
     b[i] = z[i]
 
-x = binary_sub[ind]
+x = binary_sub[index_num]
 valid_subnets = []
-if ind == 0:
+if index_num == 0:
     str_b = list(map(str, b))
     valid_subnets.append(".".join(str_b))
+    if len(z) == 1:
+        b[-1] = b[-1] + 1
+        str_b = list(map(str, b))
+        first_addresses.append(".".join(str_b))
+
+        b[1], b[2], b[3] = 255, 255, 255
+        str_b = list(map(str, b))
+        broadcast_addresses.append(".".join(str_b))
+
+        b[-1] = b[-1] - 1
+        str_b = list(map(str, b))
+        last_addresses.append(".".join(str_b))
 
 
-if ind == 1:
+
+
+if index_num == 1:
     for i in range(0, x + 1, blocksize):
 
         if len(z) == 2:
             str_b = list(map(str, b))
             valid_subnets.append(".".join(str_b))
-            break
 
-        b[ind] = i
-        str_b = list(map(str, b))
-        valid_subnets.append(".".join(str_b))
-        if i >= 1:
-            b[ind] = i - 1
+            b[-1] = b[-1] + 1
+            str_b = list(map(str, b))
+            first_addresses.append(".".join(str_b))
+
+            b[2], b[3] = 255, 255
             str_b = list(map(str, b))
             broadcast_addresses.append(".".join(str_b))
 
+            b[-1] = b[-1] - 1
+            str_b = list(map(str, b))
+            last_addresses.append(".".join(str_b))
+            break
 
-if ind == 2:
+        b[2], b[3] = 0, 0
+        b[index_num] = i
+        str_b = list(map(str, b))
+        valid_subnets.append(".".join(str_b))
+
+        b[-1] = b[-1] + 1
+        str_b = list(map(str, b))
+        first_addresses.append(".".join(str_b))
+
+        tmp = i + blocksize - 1
+        b[index_num] = tmp
+        b[2], b[3] = 255, 255
+        str_b = list(map(str, b))
+        broadcast_addresses.append(".".join(str_b))
+
+        b[-1] = b[-1] - 1
+        str_b = list(map(str, b))
+        last_addresses.append(".".join(str_b))
+
+
+if index_num == 2:
     for n in range(1, 257, 1):
         for i in range(0, x + 1, blocksize):
 
             if len(z) == 3:
                 str_b = list(map(str, b))
                 valid_subnets.append(".".join(str_b))
-                break
 
-            b[ind] = i
-            str_b = list(map(str, b))
-            valid_subnets.append(".".join(str_b))
-            if i >= 1:
-                b[ind] = i - 1
+                b[-1] = b[-1] + 1
+                str_b = list(map(str, b))
+                first_addresses.append(".".join(str_b))
+
+                b[3] = 255
                 str_b = list(map(str, b))
                 broadcast_addresses.append(".".join(str_b))
+
+                b[-1] = b[-1] - 1
+                str_b = list(map(str, b))
+                last_addresses.append(".".join(str_b))
+                break
+
+            b[3] = 0
+            b[index_num] = i
+            str_b = list(map(str, b))
+            valid_subnets.append(".".join(str_b))
+
+            b[-1] = b[-1] + 1
+            str_b = list(map(str, b))
+            first_addresses.append(".".join(str_b))
+
+            tmp = i + blocksize - 1
+            b[index_num] = tmp
+            b[3] = 255
+            str_b = list(map(str, b))
+            broadcast_addresses.append(".".join(str_b))
+
+            b[-1] = b[-1] - 1
+            str_b = list(map(str, b))
+            last_addresses.append(".".join(str_b))
 
         if len(z) == 2:
             break
@@ -95,17 +155,28 @@ if ind == 2:
         i = 0
         b[1] = n
 
-if ind == 3:
+if index_num == 3:
     for m in range(1, 257, 1):
         for n in range(1, 257, 1):
             for i in range(0, x + 1, blocksize):
-                b[ind] = i
+
+
+                b[index_num] = i
                 str_b = list(map(str, b))
                 valid_subnets.append(".".join(str_b))
-                if i >= 1:
-                    b[ind] = i - 1
-                    str_b = list(map(str, b))
-                    broadcast_addresses.append(".".join(str_b))
+
+                b[-1] = b[-1] + 1
+                str_b = list(map(str, b))
+                first_addresses.append(".".join(str_b))
+
+                tmp = i + blocksize - 1
+                b[index_num] = tmp
+                str_b = list(map(str, b))
+                broadcast_addresses.append(".".join(str_b))
+
+                b[-1] = b[-1] - 1
+                str_b = list(map(str, b))
+                last_addresses.append(".".join(str_b))
 
             if len(z) == 3:
                 break
@@ -120,13 +191,6 @@ if ind == 3:
 
         n = 0
         b[1] = m
-if len(broadcast_addresses) > 0:
-    broadcast_addresses.append(".".join(broadcast_addresses[-1].split(".")[:3]) + ".255")
-else:
-    temp = b[:3]
-    temp.append(255)
-    temp = list(map(str, temp))
-    broadcast_addresses.append(".".join(temp))
 
-print(bi, sum(a), cidr, blocksize, ind, copybinary_sub, len(z), len(valid_subnets), "\n", valid_subnets, "\n", first_addresses, "\n", broadcast_addresses, "\n",
+print(bi, sum(a), cidr, blocksize, index_num, copybinary_sub, len(z), len(valid_subnets), "\n", valid_subnets[:500], "\n", first_addresses[:500], "\n", broadcast_addresses[:500], "\n",
       last_addresses)
