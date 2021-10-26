@@ -3,38 +3,48 @@ from fastapi import FastAPI
 from typing import Optional
 from pydantic import BaseModel
 
+# BaseModel helps to consolidate the expected JSON structure
+
 app = FastAPI()
+
+# Since every class has a determined set of properties, they can be defined in dicts here
 
 classA = {"class": "A",
           "num_networks": 126,
           "num_hosts": 16777214,
           "first_address": "0.0.0.0",
-          "last_address": "127.255.255.255"}
+          "last_address": "127.255.255.255"
+          }
 
 classB = {"class": "B",
           "num_networks": 16384,
           "num_hosts": 65536,
           "first_address": "128.0.0.0",
-          "last_address": "191.255.255.255"}
+          "last_address": "191.255.255.255"
+          }
 
 classC = {"class": "C",
           "num_networks": 2097152,
           "num_hosts": 256,
           "first_address": "192.0.0.0",
-          "last_address": "223.255.255.255"}
+          "last_address": "223.255.255.255"
+          }
 
 classD = {"class": "D",
           "num_networks": "N/A",
           "num_hosts": "N/A",
           "first_address": "244.0.0.0",
-          "last_address": "239.255.255.255"}
+          "last_address": "239.255.255.255"
+          }
 
 classE = {"class": "E",
           "num_networks": "N/A",
           "num_hosts": "N/A",
           "first_address": "240.0.0.0",
-          "last_address": "255.255.255.255"}
+          "last_address": "255.255.255.255"
+          }
 
+# Dict defining the basic structure for returning Q2 answers
 subnet_props = {"address_cidr": "",
                 "num_subnets": "",
                 "addressable_hosts_per_subnet": "",
@@ -43,22 +53,26 @@ subnet_props = {"address_cidr": "",
                 "first_addresses": [],
                 "last_addresses": []
                 }
-
+# Dict for Q3
 supernet_props = {"address": "",
                   "mask": ""
                   }
 
 
+# Expected JSON input structure for Q1 & 2
 class Input(BaseModel):
     address: str
     mask: Optional[str]
 
 
+# Expected JSON input structure for Q3
 class SuperNet(BaseModel):
     address: list
 
 
-def classcalc(ip):
+# Identifying the network bits and converting to binary
+# Searches for a match to determine network class
+def class_calc(ip):
     netbit = int(ip.address.split(".")[0])
     binary = str(f"{netbit:08b}")
 
@@ -70,10 +84,17 @@ def classcalc(ip):
         return classC
     elif binary[0:4] == "1110":
         return classD
-    elif binary[0:5] == "1111":
+    else:
         return classE
 
 
+# Initialises required lists
+# copy_sub = list of non 0 subnet mask parts used to determine what part of IP to change
+# z = to determine part of original IP to leave unchanged
+# b = mapping unchanged parts
+# index num = length of submask (starting point of where to change original IP
+# len(z) = helps identify address class, determining from where submask acts on
+# Values are assigned to keys in the dict
 def find_subnetworks(a_split, s_split_int, address_class):
     copy_sub_split_int = s_split_int.copy()
     broadcast_addresses = []
@@ -81,8 +102,8 @@ def find_subnetworks(a_split, s_split_int, address_class):
     last_addresses = []
     valid_subnets = []
 
-    copybinary_sub = [i for i in copy_sub_split_int if i > 0]
-    index_num = len(copybinary_sub) - 1
+    copy_sub = [i for i in copy_sub_split_int if i > 0]
+    index_num = len(copy_sub) - 1
 
     if address_class == "A":
         z = [a_split[0]]
@@ -104,7 +125,6 @@ def find_subnetworks(a_split, s_split_int, address_class):
         b[i] = z[i]
 
     x = copy_sub_split_int[index_num]
-
     if index_num == 0:
         str_b = list(map(str, b))
         valid_subnets.append(".".join(str_b))
@@ -250,16 +270,76 @@ def find_subnetworks(a_split, s_split_int, address_class):
     subnet_props["last_addresses"] = last_addresses
 
 
+# First and last address converted to binary version to compare which bits are common
+# a = list of bits that are common in both, len(a) = cidr
+# Enough empty bits added to make a valid address in a
+# a is split and each part is converted to decimal to get subnet mask
+def calc_supernet(int_addresses, address_one):
+
+    address_first = int_addresses[0]
+    address_last = int_addresses[-1]
+
+    bin_first = [list(f"{i:08b}") for i in address_first]
+    bin_last = [list(f"{i:08b}") for i in address_last]
+
+    a = []
+    s = True
+    for i in range(len(bin_first)):
+        for j in range(len(bin_first[0])):
+
+            if bin_first[i][j] != bin_last[i][j]:
+                s = False
+                break
+
+            a.append(int(bin_first[i][j]))
+
+        if not s:
+            break
+
+    supernet_props["address"] = address_one + "/" + str(len(a))
+
+    for n in range(len(a)):
+        a[n] = 1
+
+    padding = 8 - len(a) % 8
+
+    for n in range(padding):
+        a.append(0)
+
+    j = 8
+    a = list(map(str, a))
+    split = [a[i:i + j] for i in range(0, len(a), j)]
+
+    c = ["0"] * 4
+    b = ["".join(i) for i in split]
+    b = [str(int(i, 2)) for i in b]
+
+    for i in range(len(b)):
+        c[i] = b[i]
+
+    supernet_props["mask"] = ".".join(c)
+
+    print(bin_first, "\n", bin_last, "\n", b, c)
+    return supernet_props
+
+
+# Non-functional home page
 @app.get("/")
 def home():
     return {"Data": "Home"}
 
 
+# Endpoint for ipcalc, expects an IP as input and performs class_calc on it
 @app.post("/ipcalc")
 def ipcalc(ip: Input):
-    return classcalc(ip)
+    return class_calc(ip)
 
 
+# Endpoint for subnet, takes IP and mask as input
+# Both split and mask converted to binary format(requires python 3.6+)
+# Each individual binary char in binmask added to a. Sum of 1s in a = cidr
+# Function called to compute other subnet properties
+# Subnets and hosts calculated depending on address class
 @app.post("/subnet")
 def subcalc(sub: Input):
 
@@ -297,6 +377,8 @@ def subcalc(sub: Input):
     return subnet_props
 
 
+# addresses = the split of every address into 4 parts and converted to int
+# Function called to find cidr and mask
 @app.post("/supernet")
 def supercalc(super_a: SuperNet):
 
@@ -306,49 +388,5 @@ def supercalc(super_a: SuperNet):
         a = list(map(int, a))
         addresses.append(a)
 
-    address_first = addresses[0]
-    address_last = addresses[-1]
+    calc_supernet(addresses, super_a.address[0])
 
-    binmask_first = [list(f"{i:08b}") for i in address_first]
-    binmask_last = [list(f"{i:08b}") for i in address_last]
-
-    a = []
-    s = True
-    for i in range(len(binmask_first)):
-        for j in range(len(binmask_first[0])):
-
-            if binmask_first[i][j] != binmask_last[i][j]:
-
-                s = False
-                break
-
-            a.append(int(binmask_first[i][j]))
-
-        if not s:
-            break
-
-    supernet_props["address"] = super_a.address[0] + "/" + str(len(a))
-
-    for n in range(len(a)):
-        a[n] = 1
-
-    padding = 8 - len(a) % 8
-
-    for n in range(padding):
-        a.append(0)
-
-    j = 8
-    a = list(map(str, a))
-    split = [a[i:i+j] for i in range(0, len(a), j)]
-
-    c = ["0"] * 4
-    b = ["".join(i) for i in split]
-    b = [str(int(i, 2)) for i in b]
-
-    for i in range(len(b)):
-        c[i] = b[i]
-
-    supernet_props["mask"] = ".".join(c)
-
-    print(binmask_first, "\n", binmask_last, "\n", b, c)
-    return supernet_props
