@@ -2,13 +2,97 @@
 from fastapi import FastAPI
 from typing import Optional
 from pydantic import BaseModel
-
 # BaseModel helps to consolidate the expected JSON structure
 
-app = FastAPI()
+# Description for SwaggerUI
+description = """
+This script requires the following modules to run: Pydantic, typing and FastAPI
+"""
+# Tag metadata for SwaggerUI
+tags_metadata = [
+    {
+        "name": "ipcalc",
+        "description": """This endpoint determines the class of an IP address passed to it and also returns the
+                    number of hosts, networks and first and last addresses of that class.It accepts a single IP 
+                    address as input and returns the class corresponding to it. To determine the class, 
+                    the function finds the prefix and converts it to binary. The binary prefix is then matched 
+                    with the prefix that corresponds to the correct network class (as per the lecture notes).
+                    Example input: 
+                    {
+                    "address":"136.206.18.7"
+                    }
+                    Output: {"class": "B","num_networks": 16384,"num_hosts": 65536,"first_address": 
+                    "128.0.0.0","last_address": "191.255.255.255"}""",
+    },
+    {
+        "name": "subnet",
+        "description": """This endpoint subnets a given IP address using a given subnet mask and returns the
+        cidr, number of subnets, number of hosts per subnet, valid subnets, broadcast addresses, first addresses 
+        and last addresses. The cidr is determined by converting the subnet mask to binary and summing up the'1's 
+        (slide 26). The number of subnets is given by 2 ^ (cidr - x) where (cidr - x) is the number of subnet bits. 
+        The value of x depends on the address class. The number of hosts per subnet is given by 2 ^ (x - num of subnet
+         bits) - 2, where (x - num of subnet bits) is the number of unmasked bits. 2 is subtracted for the subnet &
+         broadcast address. The various types of addresses are determined by a secondary function; 
+         find_subnetworks(3_args). Essentially, it uses parameters like the address class, subnet length, blocksize,
+         and original address length to determine which part of the IP address the subnet mask iterates on. The 
+         resulting addresses are all passed as values to the appropriate dictionary key and once complete, the 
+         dictionary is returned as output. Example Input {"address": "192.168.10.0","mask": "255.255.255.192"} Output: 
+         {
+          "address_cidr": "192.168.10.0/26",
+          "num_subnets": 4,
+          "addressable_hosts_per_subnet": 62,
+          "valid_subnets": [
+            "192.168.10.0",
+            "192.168.10.64",
+            "192.168.10.128",
+            "192.168.10.192"
+          ],
+          "broadcast_addresses": [
+            "192.168.10.63",
+            "192.168.10.127",
+            "192.168.10.191",
+            "192.168.10.255"
+          ],
+          "first_addresses": [
+            "192.168.10.1",
+            "192.168.10.65",
+            "192.168.10.129",
+            "192.168.10.193"
+          ],
+          "last_addresses": [
+            "192.168.10.62",
+            "192.168.10.126",
+            "192.168.10.190",
+            "192.168.10.254"
+          ]
+        }
+        """
+
+
+    },
+    {
+        "name": "supernet",
+        "description": """This endpoint supernets a given list of contiguous (slide 31) IP addresses. The first 
+        (smallest) and last (largest) addresses are taken out, converted to binary format and each bit is compared
+        to find the number of common pairs of bits. The number of matching pairs is the cidr and will be the 
+        number of bits in the network prefix. The network mask in binary form is given by a list of '1s' with the length
+        of cidr plus padding as required. This is converted to decimal to give the final subnet mask. Example input:
+        {
+        "addresses":["205.100.0.0","205.100.1.0","205.100.2.0","205.100.3.0"]
+        }
+        Output:
+        {
+        "address": "205.100.0.0/22",
+        "mask": "255.255.252.0"
+        }""",
+    },
+]
+
+app = FastAPI(title="Alen Joy CA304 Assessment 1",
+              description=description,
+              openapi_tags=tags_metadata)
 
 # Since every class has a determined set of properties, they can be defined in dicts here
-
 classA = {"class": "A",
           "num_networks": 126,
           "num_hosts": 16777214,
@@ -44,7 +128,7 @@ classE = {"class": "E",
           "last_address": "255.255.255.255"
           }
 
-# Dict defining the basic structure for returning Q2 answers
+# Dict defining the basic structure for returning subnet properties
 subnet_props = {"address_cidr": "",
                 "num_subnets": "",
                 "addressable_hosts_per_subnet": "",
@@ -53,7 +137,7 @@ subnet_props = {"address_cidr": "",
                 "first_addresses": [],
                 "last_addresses": []
                 }
-# Dict for Q3
+# Dict for defining the basic structure for returning supernet properties
 supernet_props = {"address": "",
                   "mask": ""
                   }
@@ -67,7 +151,7 @@ class Input(BaseModel):
 
 # Expected JSON input structure for Q3
 class SuperNet(BaseModel):
-    address: list
+    addresses: list
 
 
 # Identifying the network bits and converting to binary
@@ -319,9 +403,6 @@ def calc_supernet(int_addresses, address_one):
 
     supernet_props["mask"] = ".".join(c)
 
-    print(bin_first, "\n", bin_last, "\n", b, c)
-    return supernet_props
-
 
 # Non-functional home page
 @app.get("/")
@@ -330,7 +411,7 @@ def home():
 
 
 # Endpoint for ipcalc, expects an IP as input and performs class_calc on it
-@app.post("/ipcalc")
+@app.post("/ipcalc", tags=["ipcalc"])
 def ipcalc(ip: Input):
     return class_calc(ip)
 
@@ -340,7 +421,7 @@ def ipcalc(ip: Input):
 # Each individual binary char in binmask added to a. Sum of 1s in a = cidr
 # Function called to compute other subnet properties
 # Subnets and hosts calculated depending on address class
-@app.post("/subnet")
+@app.post("/subnet", tags=["subnet"])
 def subcalc(sub: Input):
 
     sub_split = sub.mask.split(".")
@@ -377,16 +458,17 @@ def subcalc(sub: Input):
     return subnet_props
 
 
-# addresses = the split of every address into 4 parts and converted to int
+# Endpoint for supernet, takes list of IPs as input
+# addresses = split of every address into 4 parts and converted to int
 # Function called to find cidr and mask
-@app.post("/supernet")
+@app.post("/supernet", tags=["supernet"])
 def supercalc(super_a: SuperNet):
 
     addresses = []
-    for n in range(len(super_a.address)):
-        a = super_a.address[n].split(".")
+    for n in range(len(super_a.addresses)):
+        a = super_a.addresses[n].split(".")
         a = list(map(int, a))
         addresses.append(a)
 
-    calc_supernet(addresses, super_a.address[0])
-
+    calc_supernet(addresses, super_a.addresses[0])
+    return supernet_props
