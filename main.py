@@ -46,8 +46,7 @@ subnet_props = {"address_cidr": "",
 
 supernet_props = {"address": "",
                   "mask": ""
-
-}
+                  }
 
 
 class Input(BaseModel):
@@ -296,6 +295,7 @@ def subcalc(sub: Input):
         subnet_props["addressable_hosts_per_subnet"] = subnet_iter - 2
 
     return subnet_props
+
 
 @app.post("/supernet")
 def supercalc(super_a: SuperNet):
